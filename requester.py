@@ -1,0 +1,146 @@
+import requests
+import csv
+import os
+from enum import Enum
+from dotenv import load_dotenv
+
+load_dotenv()
+TMDB_API_KEY = os.getenv('TMDB_API_KEY')
+OMDB_API_KEY = os.getenv('OMDB_API_KEY')
+BASE_TDMD_URL = 'https://api.themoviedb.org/3/movie/'
+BASE_OMDB_URL = 'http://www.omdbapi.com/'
+
+
+class ListType(Enum):
+    POPULAR = 'popular'
+    TOP_RATED = 'top_rated'
+    UPCOMING = 'upcoming'
+
+
+def save_to_csv(movie_data: list, filename: str = 'movies.csv'):
+    """Saves movie data to a CSV file"""
+    
+    if not movie_data:
+        print("No data to save.")
+        return
+    
+    fieldnames = movie_data[0].keys()
+    with open(filename, mode='w', newline='', encoding='utf-8') as file:
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(movie_data)
+        
+
+def get_tmdb_movies(list_type: ListType, page: int = 1, max_pages: int = 5) -> list:
+    """Fetches movie data from TMDB API"""
+    
+    url = f'{BASE_TDMD_URL}{list_type.value}'
+    
+    params = {
+        'api_key': TMDB_API_KEY,
+        'language': 'en-US',
+        'page': page
+    }
+    
+    movie_data_list = []
+    
+    for page_num in range(1, max_pages+1):
+        params['page'] = page_num
+        response = requests.get(url, params=params)
+
+        if response.status_code == 200:
+            data = response.json()
+            results = data.get('results', [])
+            if results:
+                movie_data_list.extend(results)
+            else:
+                break
+        else:
+            print(f"Error: Unable to fetch data, status code: {response.status_code}")
+            
+    return movie_data_list
+
+
+def tmdb_movie_details(movie_id: int) -> dict:
+    """Get movie details from TMDB API"""
+    
+    url = f'{BASE_TDMD_URL}{movie_id}'
+    params = {
+        'api_key': TMDB_API_KEY,
+        'language': 'en-US'
+    }
+    
+    response = requests.get(url, params=params)
+    
+    if response.status_code == 200:
+        return response.json()
+    else:
+        print(f"Error: Unable to fetch details for movie ID '{movie_id}', status code: {response.status_code}")
+        return {}
+    
+
+def get_omdb_data(imdb_id: str) -> dict:
+    """Fetches movie data from OMDb API"""
+
+    params = {
+        'apikey': OMDB_API_KEY,
+        'i': imdb_id
+    }
+    
+    response = requests.get(BASE_OMDB_URL, params=params)
+    
+    if response.status_code == 200:
+        data = response.json()
+        if response.json().get('Response') == 'True':
+            return {
+                'Title': data.get('Title', 'N/A'),
+                'Year': data.get('Year', 'N/A'),
+                'Rated': data.get('Rated', 'N/A'),
+                'Released': data.get('Released', 'N/A'),
+                'Runtime': data.get('Runtime', 'N/A'),
+                'Genre': data.get('Genre', 'N/A'),
+                'Director': data.get('Director', 'N/A'),
+                'Writer': data.get('Writer', 'N/A'),
+                'Actors': data.get('Actors', 'N/A'),
+                'Plot': data.get('Plot', 'N/A'),
+                'Language': data.get('Language', 'N/A'),
+                'Country': data.get('Country', 'N/A'),
+                'Awards': data.get('Awards', 'N/A'),
+                'Poster': data.get('Poster', 'N/A'),
+                'Ratings': data.get('Ratings', []),
+                'BoxOffice': data.get('BoxOffice', 'N/A'),
+            }  
+        else:
+            print(f"Error: Movie '{imdb_id}' not found in OMDb!")
+            return None
+    else:
+        print(f"Error: Unable to fetch data for '{imdb_id}', status code: {response.status_code}")
+        return None
+    
+    
+def get_movie_data(movies: list) -> list:
+    """Fetches movie data from OMDb API"""
+    
+    movie_data = []
+    for movie in movies:
+        imdb_id = movie.get('imdb_id')
+        if not imdb_id:
+            # Fetch the IMDb ID if not present (additional TMDb API call)
+            movie_details = tmdb_movie_details(movie['id'])
+            imdb_id = movie_details.get('imdb_id')
+            
+        if imdb_id:
+            omdb_data = get_omdb_data(imdb_id)
+            if omdb_data:
+                movie_data.append(omdb_data)
+    return movie_data    
+    
+    
+if __name__ == '__main__':
+    print("Starting extraction...")
+    movies = get_tmdb_movies(ListType.POPULAR)
+    
+    movie_data = get_movie_data(movies)            
+    save_to_csv(movie_data, 'movies.csv')
+    
+    print("Extraction completed. Data saved successfully!")
