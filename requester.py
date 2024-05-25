@@ -9,6 +9,7 @@ TMDB_API_KEY = os.getenv('TMDB_API_KEY')
 OMDB_API_KEY = os.getenv('OMDB_API_KEY')
 BASE_TDMD_URL = 'https://api.themoviedb.org/3/movie/'
 BASE_OMDB_URL = 'http://www.omdbapi.com/'
+MAX_PAGES = 5
 
 
 class ListType(Enum):
@@ -138,7 +139,7 @@ def get_movie_data(movies: list) -> list:
     
 if __name__ == '__main__':
     print("Starting extraction...")
-    movies = get_tmdb_movies(ListType.POPULAR)
+    movies = get_tmdb_movies(ListType.POPULAR, max_pages=MAX_PAGES)
     
     movie_data = get_movie_data(movies)            
     save_to_csv(movie_data, 'movies.csv')
