@@ -1,5 +1,6 @@
 import requests
 import csv
+import json
 import os
 from enum import Enum
 from dotenv import load_dotenv
@@ -9,7 +10,7 @@ TMDB_API_KEY = os.getenv('TMDB_API_KEY')
 OMDB_API_KEY = os.getenv('OMDB_API_KEY')
 BASE_TMBD_URL = 'https://api.themoviedb.org/3/movie/'
 BASE_OMDB_URL = 'http://www.omdbapi.com/'
-MAX_PAGES = 5
+MAX_PAGES = 1
 
 
 class ListType(Enum):
@@ -17,6 +18,17 @@ class ListType(Enum):
     TOP_RATED = 'top_rated'
     UPCOMING = 'upcoming'
 
+
+def save_to_json(movie_data: list, filename: str = 'movies.json'):
+    """Saves movie data to a JSON file"""
+    
+    if not movie_data:
+        print("No data to save.")
+        return
+    
+    with open(filename, 'w', encoding='utf-8') as file:
+        json.dump(movie_data, file, ensure_ascii=False, indent=4)
+        
 
 def save_to_csv(movie_data: list, filename: str = 'movies.csv'):
     """Saves movie data to a CSV file"""
@@ -98,7 +110,6 @@ def tmdb_movie_trailer(movie_id: int) -> str:
             if video['type'] == 'Trailer' and video['site'] == 'YouTube':
                 return f"https://www.youtube.com/watch?v={video['key']}"
             else:
-                print(f"Error: No trailer found for movie ID '{movie_id}'")
                 return "N/A"
     else:
         print(f"Error: Unable to fetch trailer for movie ID '{movie_id}', status code: {response.status_code}")
@@ -153,6 +164,8 @@ def get_movie_data(movies: list) -> list:
             omdb_data = get_omdb_data(imdb_id)
             if omdb_data:
                 trailer_url = tmdb_movie_trailer(movie['id'])
+                if trailer_url == "N/A":
+                    continue
                 omdb_data['Trailer'] = trailer_url
                 movie_data.append(omdb_data)
     return movie_data    
@@ -163,6 +176,6 @@ if __name__ == '__main__':
     movies = get_tmdb_movies(ListType.UPCOMING, max_pages=MAX_PAGES)
     
     movie_data = get_movie_data(movies)            
-    save_to_csv(movie_data, 'movies.csv')
-    
+
+    save_to_json(movie_data, 'movies.json')
     print("Extraction completed.")

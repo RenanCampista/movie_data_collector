@@ -26,7 +26,7 @@ To use this script just use the command:
 ```sh
 python requester.py
 ``` 
-Data is saved in a [csv](https://en.wikipedia.org/wiki/Comma-separated_values) file.
+Data is saved in a [csv](https://en.wikipedia.org/wiki/Comma-separated_values) or [json](https://en.wikipedia.org/wiki/JSON) file.
 
 ## Search settings
 ### Number of films returned
